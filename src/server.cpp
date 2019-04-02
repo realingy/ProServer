@@ -8,7 +8,6 @@
 
 #include "util/log.h"
 #include "fde.h"
-#include "fde_epoll.h"
 #include "server.h"
 
 const static int DEFAULT_TYPE = 0;

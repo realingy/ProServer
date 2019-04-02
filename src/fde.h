@@ -9,6 +9,11 @@ found in the LICENSE file.
 
 #include <errno.h>
 #include <vector>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <sys/epoll.h>
 
 #if 0
 #ifdef __linux__
@@ -52,18 +57,6 @@ public:
     typedef std::vector<struct Fdevent *> events_t;
 
 private:
-/*
-//#ifdef HAVE_EPOLL
-#if 1 
-    static const int MAX_FDS = 8 * 1024;
-    int ep_fd;
-    struct epoll_event ep_events[MAX_FDS];
-#else
-    int maxfd;
-    fd_set readset;
-    fd_set writeset;
-#endif
-*/
     events_t events;
     events_t ready_events;
 
@@ -77,6 +70,56 @@ public:
     virtual int del(int fd) = 0;
     virtual int clr(int fd, int flags) = 0;
     virtual const events_t* wait(int timeout_ms=-1) = 0;
+};
+
+class Epevents : public Fdevents
+{
+public:
+    typedef std::vector<struct Fdevent *> events_t;
+
+private:
+    static const int MAX_FDS = 8 * 1024;
+    int ep_fd;
+    struct epoll_event ep_events[MAX_FDS];
+
+    events_t events;
+    events_t ready_events;
+
+//   struct Fdevent *get_fde(int fd);
+	
+public:
+    Epevents();
+    ~Epevents();
+
+    bool isset(int fd, int flag);
+    int set(int fd, int flags, int data_num, void *data_ptr);
+    int del(int fd);
+    int clr(int fd, int flags);
+    const events_t* wait(int timeout_ms = -1);
+};
+
+class Slevents : public Fdevents
+{
+public:
+    typedef std::vector<struct Fdevent *> events_t;
+
+private:
+    int maxfd;
+    fd_set readset;
+    fd_set writeset;
+
+    events_t events;
+    events_t ready_events;
+	
+public:
+    Slevents();
+    ~Slevents();
+
+    bool isset(int fd, int flag);
+    int set(int fd, int flags, int data_num, void *data_ptr);
+    int del(int fd);
+    int clr(int fd, int flags);
+    const events_t* wait(int timeout_ms = -1);
 };
 
 #endif

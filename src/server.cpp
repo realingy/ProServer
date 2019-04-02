@@ -1,160 +1,292 @@
 /**
- * @file server.cpp
- * @date 2019年01月07日 09时58分41秒
+ * @file epollserver.cpp
+ * @brief  
+ * @author  
+ * @version 1.0
+ * @date 2019年02月26日 15时00分18秒
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/wait.h>
-#include <strings.h>
-#include <errno.h>
-#include <poll.h>
-#include <sys/epoll.h>
+#include "server.h"
 
-#define PORT 6666
-#define MAXLINE 1024
-#define LISTENQ 5
-#define INFTIM -1
-#define EPOLLSIZE 1000
-#define EVENTS 100
+#if 0
+namespace Test
+{
+    const static int DEFAULT_TYPE = 0;
+    const static int HANDLER_TYPE = 1;
 
-/*创建套接字，进行绑定和监听*/
-int bind_and_listen() {
-    int serverfd; /*监听socket: serverfd*/
-    struct sockaddr_in my_addr; /*本机地址信息*/
-    if((serverfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    //服务器的构造函数
+    Server::Server() {
+        signal(SIGPIPE, SIG_IGN);
+        link_count = 0; //连接数为0
+        serv_link = NULL; //连接
+        fdes = new Fdevents();
+    }
+
+    Server::~Server() {
+        for (int i = 0; i < handlers.size(); i++)
+        {
+            Handler *handler = handlers[i];
+            handler->free();
+            delete handler;
+        }
+        handlers.clear();
+        delete serv_link;
+        delete fdes;
+    }
+
+    Server *Server::listen(const std::string &ip, int port) {
+        Link *serv_link = Link::listen(ip, port);
+        if(!serv_link)
+            return NULL;
+
+        Server *ret = new Server();
+        ret->serv_link = serv_link;
+        ret->fdes->set(serv_link->fd(), FDEVENT_IN, DEFAULT_TYPE, serv_link);
+        return &ret;
+    }
+
+    void Server::add_handler(Handler *handler) {
+
+    }
+
+    int Server::close_session(Session *sess) {
+
+    }
+
+    int Server::read_session(Session *sess) {
+
+    }
+
+    int Server::write_session(Session *sess) {
+
+    }
+
+};
+#endif
+
+#if 1
+Server::Server()
+{
+    m_addr.sin_family = AF_INET;
+    m_addr.sin_port = htons(PORT);
+    m_addr.sin_addr.s_addr = INADDR_ANY;
+
+    m_epollfd = epoll_create(EPOLLSIZE); //创建epoll文件描述符
+    memset(m_buf, 0, sizeof(m_buf));
+
+    bind_and_listen(); //绑定加监听
+    do_epoll(); //
+}
+
+Server::~Server()
+{
+    if(m_epollfd) {
+        ::close(m_epollfd);
+    }
+}
+
+int Server::bind_and_listen()
+{
+    if((m_listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         return -1;
     }
 
     printf("socket ok \n");
 
-    my_addr.sin_family=AF_INET;
-    my_addr.sin_port=htons(PORT);
-    my_addr.sin_addr.s_addr=INADDR_ANY;
-    bzero(&(my_addr.sin_zero), 0);
-    if(bind(serverfd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr)) == -1) {
+    bzero(&(m_addr.sin_zero), 0);
+    if(bind(m_listenfd, (struct sockaddr *)&m_addr, sizeof(struct sockaddr)) == -1) {
         perror("bind");
         return -2;
     }
 
     printf("bind ok \n");
 
-    if (listen(serverfd, LISTENQ) == -1) {
+    if (listen(m_listenfd, LISTENQ) == -1) {
         perror ("listen");
         return -3;
     }
 
     printf("listen ok!\n");
     
-    return serverfd ;
+    return 0;
 }
 
-void add_event(int epollfd, int fd, int state) {
+void Server::add_event(int fd, int state)
+{
     struct epoll_event event;
     event.events = state;
     event.data.fd = fd;
-    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+    epoll_ctl(m_epollfd, EPOLL_CTL_ADD, fd, &event);
 }
 
 //接收新的client连接,并将client文件描述符添加到监控描述符中
-void handle_accept(int epollfd, int listenfd) {
+void Server::handle_accept()
+{
     int clientfd;
     struct sockaddr_in clientaddr;
     socklen_t clientaddrlen;
-    clientfd = accept(listenfd, (struct sockaddr *)&clientaddr, &clientaddrlen);
+    clientfd = accept(m_listenfd, (struct sockaddr *)&clientaddr, &clientaddrlen);
     if(clientfd == -1) {
         perror("accept error:");
     } else {
         printf("accept a new client: %s:%d\n", inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port);
-        add_event(epollfd, clientfd, EPOLLIN);
+        add_event(clientfd, EPOLLIN);
     }
 }
 
-void delete_event(int epollfd, int fd, int state) {
+void Server::delete_event(int fd, int state)
+{
     struct epoll_event ev;
     ev.events = state;
     ev.data.fd = fd;
-    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, &ev);
+    epoll_ctl(m_epollfd, EPOLL_CTL_DEL, fd, &ev);
 }
 
-void modify_event(int epollfd, int fd, int state) {
+void Server::modify_event(int fd, int state)
+{
     struct epoll_event ev;
     ev.events = state;
     ev.data.fd = fd;
-    epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &ev);
+    epoll_ctl(m_epollfd, EPOLL_CTL_MOD, fd, &ev);
 }
 
-void do_read(int epollfd, int fd, char *buf) {
+void Server::do_read(int fd)
+{
     int nread;
-    nread = read(fd, buf, MAXLINE);
+    nread = read(fd, m_buf, MAXLINE);
     if(-1 == nread) {
         perror("read error!");
         close(fd);
-        delete_event(epollfd, fd, EPOLLIN);
+        delete_event(fd, EPOLLIN);
     } else if(!nread) {
         fprintf(stderr, "client error.\n");
         close(fd);
-        delete_event(epollfd, fd, EPOLLIN);
+        delete_event(fd, EPOLLIN);
     } else {
-        printf("read message is: %s", buf);
-        modify_event(epollfd, fd, EPOLLOUT);
+        printf("read message is: %s", m_buf);
+        modify_event(fd, EPOLLOUT);
     }
 }
 
-void do_write(int epollfd, int fd, char *buf) {
+void Server::do_write(int fd)
+{
     int nwrite;
-    nwrite = write(fd, buf, strlen(buf));
+    nwrite = write(fd, &m_buf, strlen(m_buf));
     if(-1 == nwrite) {
         perror("write error!");
         close(fd);
-        delete_event(epollfd, fd, EPOLLOUT);
+        delete_event(fd, EPOLLOUT);
     } else {
-        modify_event(epollfd, fd, EPOLLIN);
+        modify_event(fd, EPOLLIN);
     }
-    memset(buf, 0, MAXLINE);
+    memset(m_buf, 0, MAXLINE);
 }
 
 //处理epoll_wait等到的事件，并处理事件:1.添加新的client连接 2.读取client发来的包 3.发包
-void handle_events(int epollfd, struct epoll_event *events, int num, int listenfd, char *buf) {
+void Server::handle_events(int num)
+{
     int fd;
     for(int i = 0; i < num; i++) {
-        fd = events[i].data.fd;
-        if((fd == listenfd) && (events[i].events & EPOLLIN)) 
-            handle_accept(epollfd, listenfd); //添加新的client连接
-        else if(events[i].events & EPOLLIN)
-            do_read(epollfd, fd, buf); //读取旧client的包
-        else if(events[i].events & EPOLLOUT)
-            do_write(epollfd, fd, buf); //发包
+        fd = m_events[i].data.fd;
+        if((fd == m_listenfd) && (m_events[i].events & EPOLLIN)) 
+            handle_accept(); //添加新的client连接
+        else if(m_events[i].events & EPOLLIN)
+            do_read(fd); //读取旧client的包
+        else if(m_events[i].events & EPOLLOUT)
+            do_write(fd); //发包
     }
 }
 
-void do_epoll(int listenfd) {
-    int epollfd; //
+void Server::do_epoll()
+{
+    add_event(m_listenfd, EPOLLIN); //先将listenfd添加到监听事件组中
     int ret;
-    epollfd = epoll_create(EPOLLSIZE); //创建epoll文件描述符
-    char buf[MAXLINE];
-    memset(buf, 0, sizeof(buf));
-    struct epoll_event events[EVENTS]; //epoll事件数组
-    add_event(epollfd, listenfd, EPOLLIN);
     while(1) {
-        ret = epoll_wait(epollfd, events, EVENTS, -1);
-        handle_events(epollfd, events, ret, listenfd, buf);
+        ret = epoll_wait(m_epollfd, m_events, EVENTS, -1);
+        handle_events(ret);
     }
-    close(epollfd);
 }
 
-int main() {
-    int listenfd = bind_and_listen();
-    if(listenfd < 0)
+#if 0
+//删除事件
+int del(int fd)
+{
+    struct epoll_event epe;
+    int ret = epoll_ctl(m_epollfd, EPOLL_CTL_DEL, fd, &epe);
+
+    if(-1 == ret) {
+
+    }
+
+//////////////////////////////////////////////////////////
+    if(!(fde->s_flags) & flags) {
         return 0;
-    do_epoll(listenfd);
+    }
+
+    fde->s_flags &= ~flags;
+
+    int ctl_op = fde->s_flags ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+//////////////////////////////////////////////////////////
+}
+
+//清空事件
+int clr(int fd, int flags)
+{
+    struct Fdevent *fde = get_fde(fd);
+    if(!(fde->s_flags) & flags) {
+        return 0;
+    }
+
+    fde->s_flags &= ~flags;
+
+    int ctl_op = fde->s_flags ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+    struct epoll_event epe;
+    epe.data.ptr = fde;
+    epe.events = 0;
+    if(fde->s_flags & FDEVENT_IN) 
+        epe.events |= EPOLLIN;
+    if(fde->s_flags & FDEVENT_OUT) 
+        epe.events |= EPOLLOUT;
+
+    int ret = epoll_ctl(m_epollfd, ctl_op, fd, &epe);
+    if(ret == -1) {
+        return -1;
+    }
     return 0;
 }
+
+//等待客户端事件,将已就绪事件清空,加载新的就绪事件
+const int wait(int timeout) {
+    struct Fdevent *fde;
+    struct epoll_event *epe;
+    ready_events.clear();
+
+    int ret = epoll_wait(m_epollfd, m_events, EVENTS, timeout);
+    if(-1 == ret) {
+        return NULL;
+    }
+
+    for(int i = 0; i < ret; i++) {
+        epe = &m_events[i];
+        fde = (struct Fdevent *)epe->data.ptr;
+
+        fde->events = FDEVENT_NONE;
+        if(epe->events & EPOLLIN)
+            fde->events |= FDEVENT_IN;
+        else if(epe->events & EPOLLPRI)
+            fde->events |= FDEVENT_IN;
+        else if(epe->events & EPOLLOUT)
+            fde->events |= FDEVENT_OUT;
+        else if(epe->events & EPOLLHUP)
+            fde->events |= FDEVENT_ERR;
+        else if(epe->events & EPOLLERR)
+            fde->events |= FDEVENT_ERR;
+        ready_events.push_back(fde);
+    }
+    return &ready_events;
+}
+#endif
+#endif
+
 

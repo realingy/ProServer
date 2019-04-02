@@ -55,11 +55,14 @@ namespace Sim {
         int flush(); //冲刷
         int recv(Message *msg); //收信息
         int send(const Message &msg); //发信息
+
     private:
-        int sock; //套接字fd
-        bool m_bNoblock; //非阻塞
-        bool m_error;
+        int sock;
+        bool noblock_;
+        bool error_;
+        Decoder decoder_;
         Link(bool is_server = false);
+
     };
 
 }; //namespace Sim

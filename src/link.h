@@ -10,7 +10,6 @@
 #define __LINK_H__
 
 #include <string>
-//#include <vector.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -69,7 +68,6 @@
         bool error_;
 //        Decoder decoder_;
         Link(bool is_server = false);
-
     };
 
 

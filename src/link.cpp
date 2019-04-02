@@ -101,14 +101,6 @@ Link *Link::connect(const string &ip, int port)
 
 Link *Link::listen(const char *ip, int port)
 {
-
-#if 0
-listen_err:
-//    if(sock >= 0)
-//        ::close(sock);
-    return NULL;
-#endif
-
     int sock = -1;
     int opt = 1;
 
@@ -120,26 +112,30 @@ listen_err:
 
     //创建套接字
     if((sock = ::socket(AF_INET, SOCK_STREAM, 0))== -1) {
-        //goto listen_err;
         return NULL;
     }
 
     printf("socket ok \n");
 
     if(::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void *)&opt, sizeof(opt)) == -1) {
-        //goto listen_err;
+        if(sock >= 0)
+            ::close(sock);
         return NULL;
     }
 
+    //绑定
     if(::bind(sock , (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        //goto listen_err;
+        if(sock >= 0)
+            ::close(sock);
         return NULL;
     }
 
     printf("bind ok \n");
 
+    //监听
     if(::listen(sock, 1024) == -1) {
-        //goto listen_err;
+        if(sock >= 0)
+            ::close(sock);
         return NULL;
     }
 
@@ -150,7 +146,6 @@ listen_err:
     snprintf(link->remote_ip, sizeof(link->remote_ip), "%s", ip);
     link->remote_port = port;
     return link;
-
 }
 
 Link *Link::listen(const std::string &ip, int port)

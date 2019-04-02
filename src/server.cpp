@@ -66,6 +66,7 @@ namespace Test
 
 #if 1
 Server::Server()
+    : link_(NULL)
 {
     m_epollfd = epoll_create(EPOLLSIZE); //创建epoll文件描述符
     memset(m_buf, 0, sizeof(m_buf));
@@ -80,6 +81,10 @@ Server::~Server()
 {
     if(m_epollfd) {
         ::close(m_epollfd);
+    }
+    if(link_) {
+        delete link_;
+        link_ = NULL;
     }
 }
 
@@ -114,11 +119,11 @@ int Server::bind_and_listen(const char *ip, int port)
     printf("listen ok!\n");
 #endif
 
-    Link *serv_link = Link::listen(ip, port);
-    if(!serv_link)
+    link_ = Link::listen(ip, port);
+    if(!link_)
         return -1;
     
-    m_listenfd = serv_link->getSock();
+    m_listenfd = link_->getSock();
     return 0;
 }
 

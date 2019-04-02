@@ -29,7 +29,7 @@ Link::~Link()
     close();
 }
 
-Link::close()
+void Link::close()
 {
     if(sock >= 0)
     {
@@ -38,6 +38,7 @@ Link::close()
     }
 }
 
+#if 0
 void Link::nodelay(bool enable)
 {
     int opt = enable ? 1:0;
@@ -96,9 +97,18 @@ Link *Link::connect(const string &ip, int port)
 {
     return connect(ip.c_str(), port);
 }
+#endif
 
 Link *Link::listen(const char *ip, int port)
 {
+
+#if 0
+listen_err:
+//    if(sock >= 0)
+//        ::close(sock);
+    return NULL;
+#endif
+
     int sock = -1;
     int opt = 1;
 
@@ -110,34 +120,45 @@ Link *Link::listen(const char *ip, int port)
 
     //创建套接字
     if((sock = ::socket(AF_INET, SOCK_STREAM, 0))== -1) {
-        goto listen_err;
+        //goto listen_err;
+        return NULL;
     }
+
+    printf("socket ok \n");
+
     if(::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void *)&opt, sizeof(opt)) == -1) {
-        goto listen_err;
+        //goto listen_err;
+        return NULL;
     }
+
     if(::bind(sock , (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        goto listen_err;
+        //goto listen_err;
+        return NULL;
     }
+
+    printf("bind ok \n");
+
     if(::listen(sock, 1024) == -1) {
-        goto listen_err;
+        //goto listen_err;
+        return NULL;
     }
+
+    printf("listen ok \n");
 
     Link *link = new Link(true);
     link->sock = sock;
     snprintf(link->remote_ip, sizeof(link->remote_ip), "%s", ip);
     link->remote_port = port;
+    return link;
 
-listen_err:
-    if(sock >= 0)
-        ::close(sock);
-    return NULL;
 }
 
-Link *Link::listen(const string &ip, int port)
+Link *Link::listen(const std::string &ip, int port)
 {
     return listen(ip.c_str(), port);
 }
 
+#if 0
 Link *Link::accept()
 {
     int client_sock; //客户端套接字
@@ -242,4 +263,5 @@ int send(const Message &msg)
 //发信息
 
 }
+#endif
 

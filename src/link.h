@@ -10,13 +10,14 @@
 #define __LINK_H__
 
 #include <string>
-#include <vector.h>
+//#include <vector.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-namespace Sim {
+#define LEN 1024
+
     class Link
     {
     public:
@@ -28,44 +29,48 @@ namespace Sim {
     
         ~Link();
         void close();
-        void nodelay(bool enable=true);
-        void noblock(bool enable=true);
-        void keepalive(bool enable=true);
+//        void nodelay(bool enable=true);
+//        void noblock(bool enable=true);
+//        void keepalive(bool enable=true);
     
         int fd() const {
             return sock;
         }
 
         bool error() const {
-            return m_error;
+            return error_;
         }
 
         void mark_error() {
-            m_error = true;
+            error_ = true;
         }
    
-        static Link *connect(const char *ip, int port);
-        static Link *connect(const string &ip, int port);
+    //static Link *connect(const char *ip, int port);
+    //static Link *connect(const string &ip, int port);
+
         static Link *listen(const char *ip, int port);
-        static Link *listen(const string &ip, int port);
-        Link *accept();
+        static Link *listen(const std::string &ip, int port);
+    //Link *accept();
   
+#if 0
         int read();
         int write();
         int flush(); //冲刷
         int recv(Message *msg); //收信息
         int send(const Message &msg); //发信息
+#endif
 
+        int getSock() {
+            return sock;
+        }
     private:
         int sock;
         bool noblock_;
         bool error_;
-        Decoder decoder_;
+//        Decoder decoder_;
         Link(bool is_server = false);
 
     };
-
-}; //namespace Sim
 
 
 #endif //__LINK_H__

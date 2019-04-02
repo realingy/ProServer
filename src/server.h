@@ -20,7 +20,8 @@
 #include <poll.h>
 #include <sys/epoll.h>
 
-#define PORT 6666
+#include "link.h"
+
 #define MAXLINE 1024
 #define LISTENQ 5
 #define INFTIM -1

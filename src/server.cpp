@@ -90,6 +90,7 @@ int Server::bind_and_listen(const char *ip, int port)
 //    m_addr.sin_addr.s_addr = INADDR_ANY;
     inet_pton(AF_INET, ip, &m_addr.sin_addr);
 
+#if 0
     if((m_listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         return -1;
@@ -111,7 +112,13 @@ int Server::bind_and_listen(const char *ip, int port)
     }
 
     printf("listen ok!\n");
+#endif
+
+    Link *serv_link = Link::listen(ip, port);
+    if(!serv_link)
+        return -1;
     
+    m_listenfd = serv_link->getSock();
     return 0;
 }
 

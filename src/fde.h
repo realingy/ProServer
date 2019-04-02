@@ -23,15 +23,6 @@ found in the LICENSE file.
 #endif
 #endif
 
-/*
-#define FDEVENT_NONE	(0)
-#define FDEVENT_IN		(1<<0)
-#define FDEVENT_PRI		(1<<1)
-#define FDEVENT_OUT		(1<<2)
-#define FDEVENT_HUP		(1<<3)
-#define FDEVENT_ERR		(1<<4)
-*/
-
 const static int FDEVENT_NONE = (0);
 const static int FDEVENT_IN   = (1<<0);
 const static int FDEVENT_PRI  = (1<<1);

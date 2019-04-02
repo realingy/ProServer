@@ -91,35 +91,6 @@ Server::~Server()
 
 int Server::bind_and_listen(const char *ip, int port)
 {
-    m_addr.sin_family = AF_INET;
-    m_addr.sin_port = htons((short)port);
-//    m_addr.sin_addr.s_addr = INADDR_ANY;
-    inet_pton(AF_INET, ip, &m_addr.sin_addr);
-
-#if 0
-    if((m_listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        perror("socket");
-        return -1;
-    }
-
-    printf("socket ok \n");
-
-    bzero(&(m_addr.sin_zero), 0);
-    if(bind(m_listenfd, (struct sockaddr *)&m_addr, sizeof(struct sockaddr)) == -1) {
-        perror("bind");
-        return -2;
-    }
-
-    printf("bind ok \n");
-
-    if (listen(m_listenfd, LISTENQ) == -1) {
-        perror ("listen");
-        return -3;
-    }
-
-    printf("listen ok!\n");
-#endif
-
     serv_link_ = Link::listen(ip, port);
     if(!serv_link_)
         return -1;
@@ -141,18 +112,6 @@ void Server::handle_accept()
 {
     int clientfd = serv_link_->accept();
     add_event(clientfd, EPOLLIN);
-#if 0
-    int clientfd;
-    struct sockaddr_in clientaddr;
-    socklen_t clientaddrlen;
-    clientfd = accept(m_listenfd, (struct sockaddr *)&clientaddr, &clientaddrlen);
-    if(clientfd == -1) {
-        perror("accept error:");
-    } else {
-        printf("accept a new client: %s:%d\n", inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port);
-        add_event(clientfd, EPOLLIN);
-    }
-#endif
 }
 
 void Server::delete_event(int fd, int state)

@@ -50,10 +50,10 @@
         static Link *listen(const char *ip, int port);
         static Link *listen(const std::string &ip, int port);
     //Link *accept();
-    int accept();
-  
+        int accept();
+//        int read();
+
 #if 0
-        int read();
         int write();
         int flush(); //冲刷
         int recv(Message *msg); //收信息

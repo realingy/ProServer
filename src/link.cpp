@@ -170,6 +170,55 @@ int Link::accept()
 }
 
 #if 0
+//读套接字中的数据
+int Link::read(int fd)
+{
+#if 0
+    int nread;
+    nread = read(fd, m_buf, MAXLINE);
+    if(-1 == nread) {
+        perror("read error!");
+        close(fd);
+        delete_event(fd, EPOLLIN);
+    } else if(!nread) {
+        fprintf(stderr, "client error.\n");
+        close(fd);
+        delete_event(fd, EPOLLIN);
+    } else {
+        printf("read message is: %s", m_buf);
+        modify_event(fd, EPOLLOUT);
+    }
+#endif
+
+#if 0
+    int ret = 0;
+    char buf[16 * 1024];
+    while(1) {
+        int len = ::read(sock, buf, sizeof(buf));
+        if(len == -1) {
+            if(errno == EINTR)
+                continue;
+            else if(errno == EWOULDBLOCK)
+                break;
+            else
+                return -1;
+        }
+        else if(!len) {
+            return 0;
+        }
+        else {
+            ret += len;
+            decoder_.push(buf, len);
+        }
+        if(!noblock)
+            break; //非阻塞
+    }
+    return ret;
+#endif
+}
+#endif
+
+#if 0
 Link *Link::accept()
 {
     int client_sock; //客户端套接字

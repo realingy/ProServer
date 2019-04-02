@@ -44,27 +44,9 @@ namespace Test
         ret->fdes->set(serv_link->fd(), FDEVENT_IN, DEFAULT_TYPE, serv_link);
         return &ret;
     }
-
-    void Server::add_handler(Handler *handler) {
-
-    }
-
-    int Server::close_session(Session *sess) {
-
-    }
-
-    int Server::read_session(Session *sess) {
-
-    }
-
-    int Server::write_session(Session *sess) {
-
-    }
-
 };
 #endif
 
-#if 1
 Server::Server()
     : serv_link_(NULL)
     , link_count_(0)
@@ -162,7 +144,10 @@ void Server::do_write(int fd)
     memset(m_buf, 0, MAXLINE);
 }
 
-//处理epoll_wait等到的事件，并处理事件:1.添加新的client连接 2.读取client发来的包 3.发包
+//处理epoll_wait等到的事件，并处理事件:
+// 1.添加新的client连接
+// 2.读取client发来的包
+// 3.发包
 void Server::handle_events(int num)
 {
     int fd;
@@ -186,6 +171,113 @@ void Server::do_epoll()
         handle_events(ret);
     }
 }
+
+void Server::add_handler(Handler *handler)
+{
+    handler->m_init();
+    handlers.push_back(handler);
+    if(handler->fd() > 0) {
+/*
+        fdes->set(handler->fd(), FDEVENT_IN, HANDLER_TYPE, handler);
+*/
+    }
+}
+
+#if 0
+int Server::close_session(Session *sess)
+{
+    Link *link = sess->link;
+    for(int i=0; i<this->handlers.size(); i++){
+        Handler *handler = this->handlers[i];
+        handler->close(*sess);
+    }
+
+    this->link_count --;
+    log_debug("delete link %s:%d, fd: %d, links: %d",
+        link->remote_ip, link->remote_port, link->fd(), this->link_count);
+    fdes->del(link->fd());
+
+    this->sessions.erase(sess->id);
+    delete link;
+    delete sess;
+    return 0;
+}
+
+int Server::read_session(Session *sess)
+{
+    Link *link = sess->link;
+    if(link->error()){
+        return 0;
+    }
+
+    int len = link->read();
+    if(len <= 0){
+        this->close_session(sess);
+        return -1;
+    }
+
+    while(1) {
+        Request req;
+        int ret = link->recv(&req.msg);
+        if(ret == -1){
+            log_info("fd: %d, parse error, delete link", link->fd());
+            this->close_session(sess);
+            return -1;
+        }else if(ret == 0){
+            // 报文未就绪, 继续读网络
+            break;
+        }
+        req.stime = microtime();
+        req.sess = *sess;
+	
+        Response resp;
+        for(int i=0; i<this->handlers.size(); i++){
+            Handler *handler = this->handlers[i];
+            req.time_wait = 1000 * (microtime() - req.stime);
+            HandlerState state = handler->proc(req, &resp);
+            req.time_proc = 1000 * (microtime() - req.stime) - req.time_wait;
+            if(state == HANDLE_RESP){
+                link->send(resp.msg);
+                if(link && !link->output.empty()){
+                    fdes->set(link->fd(), FDEVENT_OUT, DEFAULT_TYPE, sess);
+                }
+		
+                if(log_level() >= Logger::LEVEL_DEBUG){
+                    log_debug("w:%.3f,p:%.3f, req: %s resp: %s",
+                        req.time_wait, req.time_proc,
+                        msg_str(req.msg).c_str(),
+                        msg_str(resp.msg).c_str());
+                }
+            }else if(state == HANDLE_FAIL){
+                this->close_session(sess);
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+int Server::write_session(Session *sess)
+{
+	Link *link = sess->link;
+	if(link->error()){
+		return 0;
+	}
+
+	int len = link->write();
+	if(len <= 0){
+		log_debug("fd: %d, write: %d, delete link", link->fd(), len);
+		this->close_session(sess);
+		return -1;
+	}
+	if(link->output.empty()){
+		fdes->clr(link->fd(), FDEVENT_OUT);
+	}
+	return 0;
+}
+#endif
+
 
 #if 0
 //删除事件
@@ -265,7 +357,6 @@ const int wait(int timeout) {
     }
     return &ready_events;
 }
-#endif
 #endif
 
 

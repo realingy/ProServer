@@ -19,8 +19,11 @@
 #include <errno.h>
 #include <poll.h>
 #include <sys/epoll.h>
+#include <map>
+#include <vector>
 
 #include "link.h"
+#include "handler.h"
 
 #define MAXLINE 1024
 #define LISTENQ 5
@@ -94,6 +97,9 @@ private:
     void handle_events(int num);
     void do_epoll();
 
+    //添加事件句柄
+    void add_handler(Handler *handler);
+
 private:
     int m_listenfd; //监听socket
     int m_epollfd;  //epoll文件描述符
@@ -102,6 +108,17 @@ private:
     struct epoll_event m_events[EVENTS]; //epoll事件组
     Link *serv_link_;
     int link_count_;
+
+    std::map<int64_t, Session *> sessions;
+    std::vector<Handler *> handlers;
+
+#if 0
+    Session *accept_session();
+    Session *get_session(int64_t sess_id);
+    int close_session(Session *sess);
+    int read_session(Session *sess);
+    int write_session(Session *sess);
+#endif
 };
 #endif
 

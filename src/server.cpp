@@ -67,14 +67,12 @@ namespace Test
 #if 1
 Server::Server()
 {
-    m_addr.sin_family = AF_INET;
-    m_addr.sin_port = htons(PORT);
-    m_addr.sin_addr.s_addr = INADDR_ANY;
-
     m_epollfd = epoll_create(EPOLLSIZE); //创建epoll文件描述符
     memset(m_buf, 0, sizeof(m_buf));
 
-    bind_and_listen(); //绑定加监听
+    const char *ip = "127.0.0.1";
+    int port = 6666;
+    bind_and_listen(ip, port); //绑定加监听
     do_epoll(); //
 }
 
@@ -85,8 +83,13 @@ Server::~Server()
     }
 }
 
-int Server::bind_and_listen()
+int Server::bind_and_listen(const char *ip, int port)
 {
+    m_addr.sin_family = AF_INET;
+    m_addr.sin_port = htons((short)port);
+//    m_addr.sin_addr.s_addr = INADDR_ANY;
+    inet_pton(AF_INET, ip, &m_addr.sin_addr);
+
     if((m_listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         return -1;

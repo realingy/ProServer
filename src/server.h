@@ -81,7 +81,7 @@ public:
     ~Server();
 
 private:
-    int bind_and_listen();
+    int bind_and_listen(const char *ip, int port);
     void add_event(int fd, int state);
     //接收新的client连接,并将client文件描述符添加到监控描述符中
     void handle_accept();

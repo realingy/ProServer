@@ -7,12 +7,14 @@ found in the LICENSE file.
 #ifndef UTIL_FDE_EPOLL_H
 #define UTIL_FDE_EPOLL_H
 
-Fdevents::Fdevents()
+#include "fde_epoll.h"
+
+Epevents::Epevents()
 {
     ep_fd = epoll_create(1024);
 }
 
-Fdevents::~Fdevents()
+Epevents::~Epevents()
 {
     for(int i=0; i<(int)events.size(); i++){
         delete events[i];
@@ -24,13 +26,13 @@ Fdevents::~Fdevents()
     ready_events.clear();
 }
 
-bool Fdevents::isset(int fd, int flag)
+bool Epevents::isset(int fd, int flag)
 {
     struct Fdevent *fde = get_fde(fd);
     return (bool)(fde->s_flags & flag);
 }
 
-int Fdevents::set(int fd, int flags, int data_num, void *data_ptr)
+int Epevents::set(int fd, int flags, int data_num, void *data_ptr)
 {
     struct Fdevent *fde = get_fde(fd);
     if(fde->s_flags & flags){
@@ -55,7 +57,7 @@ int Fdevents::set(int fd, int flags, int data_num, void *data_ptr)
     return 0;
 }
 
-int Fdevents::del(int fd)
+int Epevents::del(int fd)
 {
     struct epoll_event epe;
     int ret = epoll_ctl(ep_fd, EPOLL_CTL_DEL, fd, &epe);
@@ -68,7 +70,7 @@ int Fdevents::del(int fd)
     return 0;
 }
 
-int Fdevents::clr(int fd, int flags)
+int Epevents::clr(int fd, int flags)
 {
     struct Fdevent *fde = get_fde(fd);
     if(!(fde->s_flags & flags)){
@@ -91,7 +93,7 @@ int Fdevents::clr(int fd, int flags)
     return 0;
 }
 
-const Fdevents::events_t* Fdevents::wait(int timeout_ms)
+const Fdevents::events_t* Epevents::wait(int timeout_ms)
 {
     struct Fdevent *fde;
     struct epoll_event *epe;

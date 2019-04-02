@@ -19,12 +19,3 @@ struct Fdevent* Fdevents::get_fde(int fd) {
     return events[fd];
 }
 
-#include "fde_epoll.cpp"
-
-#if 0
-#ifdef HAVE_EPOLL
-#include "fde_epoll.cpp"
-#else
-#include "fde_select.cpp"
-#endif
-#endif

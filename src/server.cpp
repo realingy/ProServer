@@ -8,6 +8,7 @@
 
 #include "util/log.h"
 #include "fde.h"
+#include "fde_epoll.h"
 #include "server.h"
 
 const static int DEFAULT_TYPE = 0;
@@ -19,6 +20,8 @@ Server::Server()
 {
     m_epollfd = epoll_create(EPOLLSIZE); //创建epoll文件描述符
     memset(m_buf, 0, sizeof(m_buf));
+
+    fdes = new Epevents();
 
     const char *ip = "127.0.0.1";
     int port = 6666;

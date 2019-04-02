@@ -3,13 +3,12 @@ Copyright (c) 2012-2014 The SSDB Authors. All rights reserved.
 Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 */
+
 #ifndef UTIL_FDE_H
 #define UTIL_FDE_H
 
 #include <errno.h>
 #include <vector>
-
-#include <sys/epoll.h>
 
 #if 0
 #ifdef __linux__
@@ -47,11 +46,13 @@ struct Fdevent{
     }
 };
 
-class Fdevents{
+class Fdevents
+{
 public:
     typedef std::vector<struct Fdevent *> events_t;
 
 private:
+/*
 //#ifdef HAVE_EPOLL
 #if 1 
     static const int MAX_FDS = 8 * 1024;
@@ -62,19 +63,20 @@ private:
     fd_set readset;
     fd_set writeset;
 #endif
+*/
     events_t events;
     events_t ready_events;
 
-    struct Fdevent *get_fde(int fd);
 public:
-    Fdevents();
-    ~Fdevents();
+    Fdevents() { }
+    ~Fdevents() { }
 
-    bool isset(int fd, int flag);
-    int set(int fd, int flags, int data_num, void *data_ptr);
-    int del(int fd);
-    int clr(int fd, int flags);
-    const events_t* wait(int timeout_ms=-1);
+    struct Fdevent *get_fde(int fd);
+    virtual bool isset(int fd, int flag) = 0;
+    virtual int set(int fd, int flags, int data_num, void *data_ptr) = 0;
+    virtual int del(int fd) = 0;
+    virtual int clr(int fd, int flags) = 0;
+    virtual const events_t* wait(int timeout_ms=-1) = 0;
 };
 
 #endif

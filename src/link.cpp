@@ -153,6 +153,22 @@ Link *Link::listen(const std::string &ip, int port)
     return listen(ip.c_str(), port);
 }
 
+int Link::accept()
+{
+    int clientfd;
+    struct sockaddr_in clientaddr;
+    socklen_t clientaddrlen = sizeof(clientaddr);
+
+    clientfd = ::accept(sock, (struct sockaddr *)&clientaddr, &clientaddrlen);
+    if(clientfd == -1) {
+        perror("accept error:");
+    } else {
+        printf("accept a new client: %s:%d\n", inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port);
+//        add_event(clientfd, EPOLLIN);
+        return clientfd;
+    }
+}
+
 #if 0
 Link *Link::accept()
 {

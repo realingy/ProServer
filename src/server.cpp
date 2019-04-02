@@ -66,7 +66,8 @@ namespace Test
 
 #if 1
 Server::Server()
-    : link_(NULL)
+    : serv_link_(NULL)
+    , link_count_(0)
 {
     m_epollfd = epoll_create(EPOLLSIZE); //创建epoll文件描述符
     memset(m_buf, 0, sizeof(m_buf));
@@ -82,9 +83,9 @@ Server::~Server()
     if(m_epollfd) {
         ::close(m_epollfd);
     }
-    if(link_) {
-        delete link_;
-        link_ = NULL;
+    if(serv_link_) {
+        delete serv_link_;
+        serv_link_ = NULL;
     }
 }
 
@@ -119,11 +120,11 @@ int Server::bind_and_listen(const char *ip, int port)
     printf("listen ok!\n");
 #endif
 
-    link_ = Link::listen(ip, port);
-    if(!link_)
+    serv_link_ = Link::listen(ip, port);
+    if(!serv_link_)
         return -1;
     
-    m_listenfd = link_->getSock();
+    m_listenfd = serv_link_->getSock();
     return 0;
 }
 
@@ -138,6 +139,9 @@ void Server::add_event(int fd, int state)
 //接收新的client连接,并将client文件描述符添加到监控描述符中
 void Server::handle_accept()
 {
+    int clientfd = serv_link_->accept();
+    add_event(clientfd, EPOLLIN);
+#if 0
     int clientfd;
     struct sockaddr_in clientaddr;
     socklen_t clientaddrlen;
@@ -148,6 +152,7 @@ void Server::handle_accept()
         printf("accept a new client: %s:%d\n", inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port);
         add_event(clientfd, EPOLLIN);
     }
+#endif
 }
 
 void Server::delete_event(int fd, int state)

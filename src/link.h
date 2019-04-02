@@ -50,6 +50,7 @@
         static Link *listen(const char *ip, int port);
         static Link *listen(const std::string &ip, int port);
     //Link *accept();
+    int accept();
   
 #if 0
         int read();

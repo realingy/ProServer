@@ -100,7 +100,8 @@ private:
     char m_buf[MAXLINE];
     struct sockaddr_in m_addr; //本地地址信息
     struct epoll_event m_events[EVENTS]; //epoll事件组
-    Link *link_;
+    Link *serv_link_;
+    int link_count_;
 };
 #endif
 

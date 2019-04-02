@@ -6,46 +6,12 @@
  * @date 2019年02月26日 15时00分18秒
  */
 
+#include "util/log.h"
+#include "fde.h"
 #include "server.h"
 
-#if 0
-namespace Test
-{
-    const static int DEFAULT_TYPE = 0;
-    const static int HANDLER_TYPE = 1;
-
-    //服务器的构造函数
-    Server::Server() {
-        signal(SIGPIPE, SIG_IGN);
-        link_count = 0; //连接数为0
-        serv_link = NULL; //连接
-        fdes = new Fdevents();
-    }
-
-    Server::~Server() {
-        for (int i = 0; i < handlers.size(); i++)
-        {
-            Handler *handler = handlers[i];
-            handler->free();
-            delete handler;
-        }
-        handlers.clear();
-        delete serv_link;
-        delete fdes;
-    }
-
-    Server *Server::listen(const std::string &ip, int port) {
-        Link *serv_link = Link::listen(ip, port);
-        if(!serv_link)
-            return NULL;
-
-        Server *ret = new Server();
-        ret->serv_link = serv_link;
-        ret->fdes->set(serv_link->fd(), FDEVENT_IN, DEFAULT_TYPE, serv_link);
-        return &ret;
-    }
-};
-#endif
+const static int DEFAULT_TYPE = 0;
+const static int HANDLER_TYPE = 1;
 
 Server::Server()
     : serv_link_(NULL)
@@ -69,6 +35,63 @@ Server::~Server()
         delete serv_link_;
         serv_link_ = NULL;
     }
+}
+
+void Server::loop()
+{
+    while(1) {
+        if(single_loop() == -1)
+            break;
+    }
+}
+
+int Server::single_loop()
+{
+#if 0
+    const Fdevents::events_t *events;
+    events = fdes->wait(20);
+    if(events == NULL){
+        log_fatal("events.wait error: %s", strerror(errno));
+        return 0;
+    }
+
+    for(int i=0; i<(int)events->size(); i++){
+        const Fdevent *fde = events->at(i);
+        if(fde->data.ptr == serv_link_){
+            this->accept_session();
+        }else if(fde->data.num == HANDLER_TYPE){
+            Handler *handler = (Handler *)fde->data.ptr;
+            while(Response *resp = handler->handle()){
+                Session *sess = this->get_session(resp->sess.id);
+                if(sess){
+                    Link *link = sess->link;
+                    link->send(resp->msg);
+                    if(link && !link->output.empty()){
+                        fdes->set(link->fd(), FDEVENT_OUT, DEFAULT_TYPE, sess);
+                    }
+                }
+                delete resp;
+            }
+        }else{
+            Session *sess = (Session *)fde->data.ptr;
+            Link *link = sess->link;
+            if(fde->events & FDEVENT_IN){
+                if(this->read_session(sess) == -1){
+                    continue;
+                }
+            }
+            if(fde->events & FDEVENT_OUT){
+                if(this->write_session(sess) == -1){
+                    continue;
+                }
+            }
+            if(link && !link->output.empty()){
+                fdes->set(link->fd(), FDEVENT_OUT, DEFAULT_TYPE, sess);
+            }
+        }
+    }
+#endif
+    return 0;
 }
 
 int Server::bind_and_listen(const char *ip, int port)
@@ -172,6 +195,7 @@ void Server::do_epoll()
     }
 }
 
+#if 0
 void Server::add_handler(Handler *handler)
 {
     handler->m_init();
@@ -182,6 +206,7 @@ void Server::add_handler(Handler *handler)
 */
     }
 }
+#endif
 
 #if 0
 int Server::close_session(Session *sess)

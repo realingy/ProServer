@@ -31,58 +31,16 @@
 #define EPOLLSIZE 1000
 #define EVENTS 100
 
-#if 0
-struct Fdevent {
-    int fd;
-    int s_flags; //
-    int events;
-    struct {
-        int num;
-        void *ptr;
-    }data;
-    bool readable() const {
-        return events & FDEVENT_IN;
-    }
-    bool writeable() const {
-        return events & FDEVENT_OUT;
-    }
-};
-#endif
+class Fdevents;
 
-#if 0
 class Server
 {
 public:
-    static Server *listen(const std::string &ip, int port);
     Server();
     ~Server();
 
-    void add_handler(Handler *handler);
     void loop();
-    int loop_once();
-
-private:
-    Fdevents *fdes;
-    Link* serv_link; //服务器连接
-    int link_count; //连接数
-    std::map<int64_t, Session *> sessions;
-    std::vector<Handler *> handlers;
-
-    Session *accept_session();
-    Session *get_session(int64_t sess_id);
-    int close_session(Session *sess);
-    int read_session(Session *sess);
-    int write_session(Session *sess);
-
-};
-#endif
-
-#if 1
-class Server
-{
-public:
-    Server();
-    ~Server();
+    int single_loop();
 
 private:
     int bind_and_listen(const char *ip, int port);
@@ -93,14 +51,16 @@ private:
     void modify_event(int fd, int state);
     void do_read(int fd);
     void do_write(int fd);
-    //处理epoll_wait等到的事件，并处理事件:1.添加新的client连接 2.读取client发来的包 3.发包
+    //处理epoll_wait等到的事件，并处理事件
+    //:1.添加新的client连接 2.读取client发来的包 3.发包
     void handle_events(int num);
     void do_epoll();
 
     //添加事件句柄
-    void add_handler(Handler *handler);
+//    void add_handler(Handler *handler);
 
 private:
+    Fdevents *fdes;
     int m_listenfd; //监听socket
     int m_epollfd;  //epoll文件描述符
     char m_buf[MAXLINE];
@@ -120,5 +80,4 @@ private:
     int write_session(Session *sess);
 #endif
 };
-#endif
 

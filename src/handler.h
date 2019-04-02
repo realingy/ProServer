@@ -12,10 +12,10 @@ class Session
 public:
     int64_t id;
     Link *link;
-    Session(){
+    Session() {
         static int64_t inc = 0;
-        this->id = inc ++;
-        this->link = NULL;
+        id = inc++; //连接的唯一id
+        link = NULL;
     }
     ~Session(){
     }

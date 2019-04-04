@@ -39,9 +39,6 @@ public:
     Server();
     ~Server();
 
-    void loop();
-    int single_loop();
-
 private:
     int bind_and_listen(const char *ip, int port);
     void add_event(int fd, int state);
@@ -54,7 +51,7 @@ private:
     //处理epoll_wait等到的事件，并处理事件
     //:1.添加新的client连接 2.读取client发来的包 3.发包
     void handle_events(int num);
-    void do_epoll();
+    void loop();
 
     //添加事件句柄
 //    void add_handler(Handler *handler);

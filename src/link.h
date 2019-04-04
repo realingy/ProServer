@@ -60,9 +60,6 @@
         int send(const Message &msg); //发信息
 #endif
 
-        int getSock() {
-            return sock;
-        }
     private:
         int sock;
         bool noblock_;

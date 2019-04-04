@@ -25,7 +25,7 @@ Server::Server()
     const char *ip = "127.0.0.1";
     int port = 6666;
     bind_and_listen(ip, port); //绑定加监听
-    do_epoll(); //
+    loop(); //
 }
 
 Server::~Server()
@@ -39,17 +39,17 @@ Server::~Server()
     }
 }
 
-void Server::loop()
+#if 0
+void Server::Loop()
 {
     while(1) {
-        if(single_loop() == -1)
+        if(single_Loop() == -1)
             break;
     }
 }
 
-int Server::single_loop()
+int Server::single_Loop()
 {
-#if 0
     const Fdevents::events_t *events;
     events = fdes->wait(20);
     if(events == NULL){
@@ -92,9 +92,9 @@ int Server::single_loop()
             }
         }
     }
-#endif
     return 0;
 }
+#endif
 
 int Server::bind_and_listen(const char *ip, int port)
 {
@@ -102,16 +102,19 @@ int Server::bind_and_listen(const char *ip, int port)
     if(!serv_link_)
         return -1;
     
-    m_listenfd = serv_link_->getSock();
+    m_listenfd = serv_link_->fd();
     return 0;
 }
 
 void Server::add_event(int fd, int state)
 {
+    fdes->add(fd);
+#if 0
     struct epoll_event event;
     event.events = state;
     event.data.fd = fd;
     epoll_ctl(m_epollfd, EPOLL_CTL_ADD, fd, &event);
+#endif
 }
 
 //接收新的client连接,并将client文件描述符添加到监控描述符中
@@ -187,9 +190,10 @@ void Server::handle_events(int num)
     }
 }
 
-void Server::do_epoll()
+void Server::loop()
 {
-    add_event(m_listenfd, EPOLLIN); //先将listenfd添加到监听事件组中
+    //先将listenfd添加到监听事件组中
+    add_event(m_listenfd, EPOLLIN);
     int ret;
     while(1) {
         ret = epoll_wait(m_epollfd, m_events, EVENTS, -1);

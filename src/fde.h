@@ -66,6 +66,7 @@ public:
 
     struct Fdevent *get_fde(int fd);
     virtual bool isset(int fd, int flag) = 0;
+    virtual bool add(int fd) = 0;
     virtual int set(int fd, int flags, int data_num, void *data_ptr) = 0;
     virtual int del(int fd) = 0;
     virtual int clr(int fd, int flags) = 0;
@@ -85,13 +86,12 @@ private:
     events_t events;
     events_t ready_events;
 
-//   struct Fdevent *get_fde(int fd);
-	
 public:
     Epevents();
     ~Epevents();
 
     bool isset(int fd, int flag);
+    bool add(int fd);
     int set(int fd, int flags, int data_num, void *data_ptr);
     int del(int fd);
     int clr(int fd, int flags);

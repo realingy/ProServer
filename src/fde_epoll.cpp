@@ -51,6 +51,14 @@ int Epevents::set(int fd, int flags, int data_num, void *data_ptr)
     return 0;
 }
 
+int Epevents::add(int fd)
+{
+    struct epoll_event event;
+    event.events = EPOLL_IN;
+    event.data.fd = fd;
+    epoll_ctl(ep_fd, EPOLL_CTL_ADD, fd, &event);
+}
+
 int Epevents::del(int fd)
 {
     struct epoll_event epe;

@@ -1,7 +1,19 @@
 #ifndef UTIL_FDE_EPOLL_H
 #define UTIL_FDE_EPOLL_H
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/wait.h>
+#include <errno.h>
 #include "fde.h"
+
 
 Epevents::Epevents()
 {
@@ -51,13 +63,115 @@ int Epevents::set(int fd, int flags, int data_num, void *data_ptr)
     return 0;
 }
 
-int Epevents::add(int fd)
+bool Epevents::add(int fd)
 {
     struct epoll_event event;
-    event.events = EPOLL_IN;
+    event.events = EPOLLIN;
     event.data.fd = fd;
     epoll_ctl(ep_fd, EPOLL_CTL_ADD, fd, &event);
+    return true;
 }
+
+void Epevents::loop(Link *servlink)
+{
+    //先将listenfd添加到监听事件组中
+    int m_listenfd = servlink->fd();
+    add(m_listenfd);
+    int ret;
+    while(1) {
+        ret = epoll_wait(ep_fd, ep_events, MAX_FDS, -1);
+        handle_events(ret);
+    }
+}
+
+//处理epoll_wait等到的事件，并处理事件:
+// 1.添加新的client连接
+// 2.读取client发来的包
+// 3.发包
+void Epevents::handle_events(int num)
+{
+    int fd;
+    for(int i = 0; i < num; i++) {
+        fd = ep_events[i].data.fd;
+        if((fd == m_listenfd) && (ep_events[i].events & EPOLLIN)) 
+            handle_accept(); //添加新的client连接
+        else if(ep_events[i].events & EPOLLIN)
+            do_read(fd); //读取旧client的包
+        else if(ep_events[i].events & EPOLLOUT)
+            do_write(fd); //发包
+    }
+}
+
+void Epevents::handle_accept()
+{
+    int clientfd;
+    struct sockaddr_in clientaddr;
+    socklen_t clientaddrlen;
+    clientfd = accept(m_listenfd, (struct sockaddr *)&clientaddr, &clientaddrlen);
+    if(clientfd == -1) {
+        perror("accept error:");
+    } else {
+        printf("accept a new client: %s:%d\n", inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port);
+        add(clientfd);
+    }
+#if 0
+    int clientfd = serv_link_->accept();
+    add_event(clientfd, EPOLLIN);
+#endif
+}
+
+void Epevents::do_read(int fd)
+{
+    int nread;
+    nread = read(fd, m_buf, MAXLINE);
+    if(-1 == nread) {
+        perror("read error!");
+        close(fd);
+        delete_event(fd, EPOLLIN);
+    } else if(!nread) {
+        fprintf(stderr, "client error.\n");
+        close(fd);
+        delete_event(fd, EPOLLIN);
+    } else {
+        printf("read message is: %s", m_buf);
+        modify_event(fd, EPOLLOUT);
+    }
+}
+
+void Epevents::do_write(int fd)
+{
+    int nwrite;
+    nwrite = write(fd, &m_buf, strlen(m_buf));
+    if(-1 == nwrite) {
+        perror("write error!");
+        close(fd);
+        delete_event(fd, EPOLLOUT);
+    } else {
+        modify_event(fd, EPOLLIN);
+    }
+    memset(m_buf, 0, MAXLINE);
+}
+
+void Epevents::delete_event(int fd, int state)
+{
+    struct epoll_event ev;
+    ev.events = state;
+    ev.data.fd = fd;
+    epoll_ctl(ep_fd, EPOLL_CTL_DEL, fd, &ev);
+}
+
+void Epevents::modify_event(int fd, int state)
+{
+    struct epoll_event ev;
+    ev.events = state;
+    ev.data.fd = fd;
+    epoll_ctl(ep_fd, EPOLL_CTL_MOD, fd, &ev);
+}
+
+
+
+
+
 
 int Epevents::del(int fd)
 {

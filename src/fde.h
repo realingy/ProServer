@@ -14,6 +14,7 @@ found in the LICENSE file.
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/epoll.h>
+#include "link.h"
 
 #if 0
 #ifdef __linux__
@@ -26,6 +27,8 @@ found in the LICENSE file.
 	#include <sys/select.h>
 #endif
 #endif
+
+#define MAXLINE 1024
 
 const static int FDEVENT_NONE = (0);
 const static int FDEVENT_IN   = (1<<0);
@@ -65,6 +68,7 @@ public:
     ~Fdevents() { }
 
     struct Fdevent *get_fde(int fd);
+    virtual void loop(Link *link) = 0;
     virtual bool isset(int fd, int flag) = 0;
     virtual bool add(int fd) = 0;
     virtual int set(int fd, int flags, int data_num, void *data_ptr) = 0;
@@ -82,14 +86,24 @@ private:
     static const int MAX_FDS = 8 * 1024;
     int ep_fd;
     struct epoll_event ep_events[MAX_FDS];
+    int m_listenfd;
 
     events_t events;
     events_t ready_events;
+
+	char m_buf[MAXLINE];
+	void handle_events(int num);
+	void handle_accept();
+	void do_read(int fd);
+	void do_write(int fd);
+	void delete_event(int fd, int state);
+	void modify_event(int fd, int state);
 
 public:
     Epevents();
     ~Epevents();
 
+    void loop(Link *link);
     bool isset(int fd, int flag);
     bool add(int fd);
     int set(int fd, int flags, int data_num, void *data_ptr);

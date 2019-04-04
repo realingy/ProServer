@@ -192,6 +192,8 @@ void Server::handle_events(int num)
 
 void Server::loop()
 {
+    fdes->loop(serv_link_);
+#if 0
     //先将listenfd添加到监听事件组中
     add_event(m_listenfd, EPOLLIN);
     int ret;
@@ -199,6 +201,7 @@ void Server::loop()
         ret = epoll_wait(m_epollfd, m_events, EVENTS, -1);
         handle_events(ret);
     }
+#endif
 }
 
 #if 0
